@@ -54,6 +54,7 @@ namespace BackgroundApp
             }
 #endif
             BackgroundTasks.BackgroundTest.Register();
+            BackgroundTasks.BackgroundTest.ClearNotification();
 
             Frame rootFrame = Window.Current.Content as Frame;
 

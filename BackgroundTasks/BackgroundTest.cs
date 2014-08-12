@@ -7,7 +7,10 @@ using Windows.ApplicationModel.Background;
 using System.IO;
 using System.Net.Http;
 using Windows.Foundation.Collections;
+using System.Threading.Tasks;
 
+using Notifications = Windows.UI.Notifications;
+using Windows.Data.Xml.Dom;
 namespace BackgroundTasks
 {
     public sealed class BackgroundTest : IBackgroundTask
@@ -53,6 +56,7 @@ namespace BackgroundTasks
 
         public async void Run(IBackgroundTaskInstance taskInstance)
         {
+            ShowNotification("activity");
             System.Diagnostics.Debug.WriteLine("Starting task");
             //it is an async work that could take long, we need to get a deferral...
             var deferral = taskInstance.GetDeferral();
@@ -74,6 +78,7 @@ namespace BackgroundTasks
                 if (response.StatusCode == HttpStatusCode.NotModified)
                 {
                     //nothing to update, we already have the good one
+                    ShowNotification("alert");
                 }
                 else if (response.StatusCode == HttpStatusCode.OK)
                 {
@@ -86,8 +91,12 @@ namespace BackgroundTasks
                             stream.CopyTo(fileStream);
                         }
                     }
+                    
                     //store the last modified value, cannot store it inside the file properties, not allowed by w8
                     localSettings.Values[lastModifiedKey] = response.Content.Headers.LastModified ?? null;
+                    //show badge notification
+                   ShowNotification("attention");
+
                 }
                 else
                 {
@@ -104,6 +113,27 @@ namespace BackgroundTasks
                 System.Diagnostics.Debug.WriteLine("End Task");
                 deferral.Complete();
             }
+        }
+
+        public static void ShowNotification(string value) //"alert" or "activity"
+        {
+            if (!string.IsNullOrEmpty(value))
+            {
+                var badgeXml = Notifications.BadgeUpdateManager.GetTemplateContent(Notifications.BadgeTemplateType.BadgeGlyph);
+                var badgeElement = (XmlElement)badgeXml.SelectSingleNode("/badge");
+                badgeElement.SetAttribute("value", value);
+                var notification = new Notifications.BadgeNotification(badgeXml);
+                Notifications.BadgeUpdateManager.CreateBadgeUpdaterForApplication().Update(notification);
+            }
+            else
+            {
+                Notifications.BadgeUpdateManager.CreateBadgeUpdaterForApplication().Clear();
+            }
+        }
+
+        public static void ClearNotification()
+        {
+            ShowNotification(null);
         }
     }
 }
