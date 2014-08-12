@@ -26,15 +26,6 @@ namespace BackgroundApp
         public MainPage()
         {
             this.InitializeComponent();
-            loadAsync();
-        }
-
-        private async void loadAsync()
-        {
-            BackgroundTest test = new BackgroundTest();
-            progressRing.IsActive = true;
-            textBlock.Text = await test.GetFile();
-            progressRing.IsActive = false;
         }
     }
 }
