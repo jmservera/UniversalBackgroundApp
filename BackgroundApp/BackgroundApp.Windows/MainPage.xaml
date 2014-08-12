@@ -8,6 +8,9 @@
     mc:Ignorable="d">
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-
+        <TextBlock Name="textBlock">
+            
+        </TextBlock>
+        <ProgressRing Name="progressRing" Height="200" Width="200"></ProgressRing>
     </Grid>
 </Page>

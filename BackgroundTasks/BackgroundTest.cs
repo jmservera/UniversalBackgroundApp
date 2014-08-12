@@ -4,8 +4,11 @@
     using System.IO;
     using System.Net;
     using System.Net.Http;
+    using System.Threading.Tasks;
     using Windows.ApplicationModel.Background;
     using Windows.Data.Xml.Dom;
+    using Windows.Foundation;
+    using Windows.Storage;
     using Notifications = Windows.UI.Notifications;
     public sealed class BackgroundTest : IBackgroundTask
     {
@@ -44,10 +47,22 @@
 
         public async void Run(IBackgroundTaskInstance taskInstance)
         {
-            ShowNotification("activity");
-            System.Diagnostics.Debug.WriteLine("Starting task");
             //it is an async work that could take long, we need to get a deferral...
             var deferral = taskInstance.GetDeferral();
+            try
+            {
+                await downloadFile();
+            }
+            finally
+            {
+                deferral.Complete();
+            }
+        }
+
+        private static async System.Threading.Tasks.Task downloadFile()
+        {
+            ShowNotification("activity");
+            System.Diagnostics.Debug.WriteLine("Starting task");
 
             var folder = Windows.Storage.ApplicationData.Current.TemporaryFolder;
             var localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
@@ -80,16 +95,16 @@
                             stream.CopyTo(fileStream);
                         }
                     }
-                    
+
                     //store the last modified value, cannot store it inside the file properties, not allowed by w8
                     localSettings.Values[lastModifiedKey] = response.Content.Headers.LastModified ?? null;
 
                     //show badge notification
-                   ShowNotification("attention");
+                    ShowNotification("attention");
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine("Request returned error {0}:{1}", (int)response.StatusCode, 
+                    System.Diagnostics.Debug.WriteLine("Request returned error {0}:{1}", (int)response.StatusCode,
                         response.StatusCode);
                     ShowNotification("error");
                 }
@@ -102,10 +117,45 @@
             finally
             {
                 System.Diagnostics.Debug.WriteLine("End Task");
-                deferral.Complete();
             }
         }
 
+        public IAsyncOperation<string> GetFile()
+        {
+            return getFile().AsAsyncOperation();
+        }
+
+        private async Task<string> getFile()
+        {
+            var folder = Windows.Storage.ApplicationData.Current.TemporaryFolder;
+            StorageFile file = null;
+            try
+            {
+                file = await folder.GetFileAsync(fileName);
+            }
+            catch (FileNotFoundException)
+            {
+            }
+            if (file == null)
+            {
+                await downloadFile();
+                try
+                {
+                    file = await folder.GetFileAsync(fileName);
+                }
+                catch (FileNotFoundException)
+                {
+                    return null;
+                }
+            }
+            using (var fileStream = await file.OpenStreamForReadAsync())
+            {
+                using (StreamReader r = new StreamReader(fileStream))
+                {
+                    return await r.ReadToEndAsync();
+                }
+            }
+        }
         public static void ShowNotification(string value) //"alert" or "activity"
         {
             if (!string.IsNullOrEmpty(value))
