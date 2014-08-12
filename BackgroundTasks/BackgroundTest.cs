@@ -16,8 +16,6 @@ namespace BackgroundTasks
 
         public static BackgroundTaskRegistration Register()
         {
-            //var status = BackgroundExecutionManager.RequestAccessAsync();
-
             foreach (var cur in BackgroundTaskRegistration.AllTasks)
             {
 
@@ -32,7 +30,7 @@ namespace BackgroundTasks
 
 
             //http://msdn.microsoft.com/en-us/library/windows/apps/windows.applicationmodel.background.timetrigger.aspx
-            IBackgroundTrigger trigger = new TimeTrigger(15, false);
+            IBackgroundTrigger trigger = new TimeTrigger(360, false); //6 hours
             //
             // Builds the background task.
             //
@@ -56,6 +54,7 @@ namespace BackgroundTasks
         public async void Run(IBackgroundTaskInstance taskInstance)
         {
             System.Diagnostics.Debug.WriteLine("Starting task");
+            //it is an async work that could take long, we need to get a deferral...
             var deferral = taskInstance.GetDeferral();
 
             var folder = Windows.Storage.ApplicationData.Current.TemporaryFolder;
@@ -65,6 +64,7 @@ namespace BackgroundTasks
 
             if (localSettings.Values.ContainsKey(lastModifiedKey))
             {
+                //this will avoid downloading a large file when we already have a fresh copy
                 client.DefaultRequestHeaders.IfModifiedSince = (DateTimeOffset)localSettings.Values[lastModifiedKey];
             }
 
@@ -73,7 +73,7 @@ namespace BackgroundTasks
                 var response = await client.GetAsync("http://jmservera.com/feed");
                 if (response.StatusCode == HttpStatusCode.NotModified)
                 {
-                    //nothing to update
+                    //nothing to update, we already have the good one
                 }
                 else if (response.StatusCode == HttpStatusCode.OK)
                 {
@@ -84,11 +84,15 @@ namespace BackgroundTasks
                         using (var fileStream = await file.OpenStreamForWriteAsync())
                         {
                             stream.CopyTo(fileStream);
-                            fileStream.Flush();
                         }
                     }
-                    //store the last modified value
+                    //store the last modified value, cannot store it inside the file properties, not allowed by w8
                     localSettings.Values[lastModifiedKey] = response.Content.Headers.LastModified ?? null;
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("Request returned error {0}:{1}", (int)response.StatusCode, 
+                        response.StatusCode);
                 }
             }
             catch (Exception ex)
