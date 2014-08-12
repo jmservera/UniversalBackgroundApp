@@ -1,41 +1,33 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/2010/manifest" xmlns:m2="http://schemas.microsoft.com/appx/2013/manifest" xmlns:m3="http://schemas.microsoft.com/appx/2014/manifest" xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest">
-
-  <Identity Name="738179c1-ecdb-4a53-98a1-81a6f63ea414"
-            Publisher="CN=jservera"
-            Version="1.0.0.0" />
-
-  <mp:PhoneIdentity PhoneProductId="738179c1-ecdb-4a53-98a1-81a6f63ea414" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
-
+  <Identity Name="738179c1-ecdb-4a53-98a1-81a6f63ea414" Publisher="CN=jservera" Version="1.0.0.0" />
+  <mp:PhoneIdentity PhoneProductId="738179c1-ecdb-4a53-98a1-81a6f63ea414" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
   <Properties>
     <DisplayName>BackgroundApp.WindowsPhone</DisplayName>
     <PublisherDisplayName>jservera</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
-
   <Prerequisites>
     <OSMinVersion>6.3.1</OSMinVersion>
     <OSMaxVersionTested>6.3.1</OSMaxVersionTested>
   </Prerequisites>
-  
   <Resources>
-    <Resource Language="x-generate"/>
+    <Resource Language="x-generate" />
   </Resources>
-
   <Applications>
-    <Application Id="App"
-        Executable="$targetnametoken$.exe"
-        EntryPoint="BackgroundApp.WindowsPhone.App">
-        <m3:VisualElements
-            DisplayName="BackgroundApp.WindowsPhone"
-            Square150x150Logo="Assets\Logo.png"
-            Square44x44Logo="Assets\SmallLogo.png"
-            Description="BackgroundApp.WindowsPhone"
-            ForegroundText="light"
-            BackgroundColor="transparent">
-            <m3:DefaultTile Wide310x150Logo="Assets\WideLogo.png" Square71x71Logo="Assets\Square71x71Logo.png"/>
-            <m3:SplashScreen Image="Assets\SplashScreen.png"/>
-        </m3:VisualElements>
+    <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="BackgroundApp.WindowsPhone.App">
+      <m3:VisualElements DisplayName="BackgroundApp.WindowsPhone" Square150x150Logo="Assets\Logo.png" Square44x44Logo="Assets\SmallLogo.png" Description="BackgroundApp.WindowsPhone" ForegroundText="light" BackgroundColor="transparent">
+        <m3:DefaultTile Wide310x150Logo="Assets\WideLogo.png" Square71x71Logo="Assets\Square71x71Logo.png">
+        </m3:DefaultTile>
+        <m3:SplashScreen Image="Assets\SplashScreen.png" />
+      </m3:VisualElements>
+      <Extensions>
+        <Extension Category="windows.backgroundTasks" EntryPoint="BackgroundTasks.BackgroundTest">
+          <BackgroundTasks>
+            <Task Type="timer" />
+          </BackgroundTasks>
+        </Extension>
+      </Extensions>
     </Application>
   </Applications>
   <Capabilities>

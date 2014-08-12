@@ -1,16 +1,11 @@
-﻿using BackgroundTasks;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
-using Windows.Data.Xml.Dom;
-using Windows.Web.Syndication;
-
-namespace BackgroundApp
+﻿namespace BackgroundApp
 {
+    using BackgroundTasks;
+    using System;
+    using System.ComponentModel;
+    using System.Runtime.CompilerServices;
+    using Windows.Data.Xml.Dom;
+    using Windows.Web.Syndication;
     public class BackgroundAppViewModel:INotifyPropertyChanged
     {
         BackgroundTest test = new BackgroundTest();
