@@ -53,8 +53,7 @@ namespace BackgroundApp
                 this.DebugSettings.EnableFrameRateCounter = true;
             }
 #endif
-            BackgroundTasks.BackgroundTest.Register();
-            BackgroundTasks.BackgroundTest.ClearNotification();
+
 
             Frame rootFrame = Window.Current.Content as Frame;
 
@@ -76,6 +75,8 @@ namespace BackgroundApp
                 // Place the frame in the current Window
                 Window.Current.Content = rootFrame;
             }
+            
+            BackgroundTasks.BackgroundTest.ClearNotification();
 
             if (rootFrame.Content == null)
             {

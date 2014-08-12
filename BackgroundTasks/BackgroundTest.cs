@@ -14,18 +14,34 @@
     {
         const string FriendlyName = "BackgroundTestName";
 
-        public static BackgroundTaskRegistration Register()
-        {
-            foreach (var cur in BackgroundTaskRegistration.AllTasks)
-            {
+        static BackgroundTaskRegistration _task;
 
-                if (cur.Value.Name == FriendlyName)
+        public static IAsyncOperation<BackgroundTaskRegistration> RegisterTaskAsync()
+        {
+            return registerAsyncCore().AsAsyncOperation();
+        }
+
+        public static bool IsTaskRegistered()
+        {
+            if (_task == null)
+            {
+                foreach (var cur in BackgroundTaskRegistration.AllTasks)
                 {
-                    // The task is already registered.
-                    return (BackgroundTaskRegistration)(cur.Value);
+                    if (cur.Value.Name == FriendlyName)
+                    {
+                        // The task is already registered.
+                        _task = (BackgroundTaskRegistration)(cur.Value);
+                    }
                 }
             }
+            return _task != null;
+        }
+        private static async Task<BackgroundTaskRegistration> registerAsyncCore()
+        {
+            if (IsTaskRegistered())
+                return _task;
 
+            await BackgroundExecutionManager.RequestAccessAsync();
 
             //http://msdn.microsoft.com/en-us/library/windows/apps/windows.applicationmodel.background.timetrigger.aspx
             IBackgroundTrigger trigger = new TimeTrigger(360, false); //6 hours
@@ -38,8 +54,15 @@
             builder.SetTrigger(trigger);
 
             // Registers the background task, and get back a BackgroundTaskRegistration object representing the registered task.
-            BackgroundTaskRegistration task = builder.Register();
-            return task;
+            return builder.Register();
+        }
+
+        public static void UnregisterTask()
+        {
+            if (IsTaskRegistered())
+            {
+                _task.Unregister(true);
+            }
         }
 
         const string fileName = "feed.xml";

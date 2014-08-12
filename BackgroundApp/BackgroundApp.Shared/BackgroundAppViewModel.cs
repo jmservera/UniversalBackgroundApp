@@ -26,10 +26,38 @@
             set { SetProperty(ref _feed , value); }
         }
 
+        private bool _isTaskRegistered;
+
+        public bool IsTaskRegistered
+        {
+            get { return _isTaskRegistered; }
+            set
+            {
+                setRegisteredTask(value);
+            }
+        }
+
+        private async void setRegisteredTask(bool register)
+        {
+            if (_isTaskRegistered != register)
+            {
+                if (_isTaskRegistered)
+                {
+                    BackgroundTest.UnregisterTask();
+                }
+                else
+                {
+                    await BackgroundTest.RegisterTaskAsync();
+                    _isTaskRegistered = BackgroundTest.IsTaskRegistered();
+                    OnPropertyChanged("IsTaskRegistered");
+                }
+            }
+        }
 
         public BackgroundAppViewModel()
         {
             Load();
+            _isTaskRegistered = BackgroundTest.IsTaskRegistered();
         }
 
         public async void Load()

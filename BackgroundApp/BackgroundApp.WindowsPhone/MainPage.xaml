@@ -17,10 +17,18 @@
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" DataContext="{StaticResource vm}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="70"/>
+            <RowDefinition Height="60"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-        <TextBlock Text="{Binding Feed.Title.Text}" FontSize="50" Margin="5" TextTrimming="CharacterEllipsis"/>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition Width="100"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="{Binding Feed.Title.Text}" FontSize="45" Margin="5" TextTrimming="CharacterEllipsis"/>
+            <ToggleSwitch Grid.Column="1"  IsOn="{Binding IsTaskRegistered, Mode=TwoWay}">Background Task</ToggleSwitch>
+        </Grid>
+
         <GridView Grid.Row="1" ItemsSource="{Binding Feed.Items}" Margin="15" Padding="0 10 0 0">
             <GridView.ItemTemplate>
                 <DataTemplate>
@@ -36,7 +44,6 @@
                                 <RowDefinition />
                                 <RowDefinition Height="30" />
                             </Grid.RowDefinitions>
-                            <Image Source="{Binding ImageUri}"/>
                             <Border Background="#c0000000"/>
                             <TextBlock  Text="{Binding Title.Text}" TextWrapping="Wrap" TextTrimming="WordEllipsis" FontSize="20"/>
                             <TextBlock Grid.Row="1" Text="{Binding Summary.Text}" TextWrapping="Wrap" TextTrimming="WordEllipsis"/>
