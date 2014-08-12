@@ -1,18 +1,12 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Net;
-using System.Text;
-using Windows.ApplicationModel.Background;
-using System.IO;
-using System.Net.Http;
-using Windows.Foundation.Collections;
-using System.Threading.Tasks;
-
-using Notifications = Windows.UI.Notifications;
-using Windows.Data.Xml.Dom;
-namespace BackgroundTasks
+﻿namespace BackgroundTasks
 {
+    using System;
+    using System.IO;
+    using System.Net;
+    using System.Net.Http;
+    using Windows.ApplicationModel.Background;
+    using Windows.Data.Xml.Dom;
+    using Notifications = Windows.UI.Notifications;
     public sealed class BackgroundTest : IBackgroundTask
     {
         const string FriendlyName = "BackgroundTestName";
@@ -24,9 +18,7 @@ namespace BackgroundTasks
 
                 if (cur.Value.Name == FriendlyName)
                 {
-                    // 
                     // The task is already registered.
-                    // 
                     return (BackgroundTaskRegistration)(cur.Value);
                 }
             }
@@ -34,21 +26,17 @@ namespace BackgroundTasks
 
             //http://msdn.microsoft.com/en-us/library/windows/apps/windows.applicationmodel.background.timetrigger.aspx
             IBackgroundTrigger trigger = new TimeTrigger(360, false); //6 hours
-            //
+
             // Builds the background task.
-            //
             BackgroundTaskBuilder builder = new BackgroundTaskBuilder();
 
             builder.Name = FriendlyName;
             builder.TaskEntryPoint = typeof(BackgroundTest).FullName;
             builder.SetTrigger(trigger);
 
-            //
             // Registers the background task, and get back a BackgroundTaskRegistration object representing the registered task.
-            //
             BackgroundTaskRegistration task = builder.Register();
             return task;
-
         }
 
         const string fileName = "feed.xml";
@@ -70,6 +58,7 @@ namespace BackgroundTasks
             {
                 //this will avoid downloading a large file when we already have a fresh copy
                 client.DefaultRequestHeaders.IfModifiedSince = (DateTimeOffset)localSettings.Values[lastModifiedKey];
+                //maybe we could also use ETag...
             }
 
             try
@@ -94,19 +83,21 @@ namespace BackgroundTasks
                     
                     //store the last modified value, cannot store it inside the file properties, not allowed by w8
                     localSettings.Values[lastModifiedKey] = response.Content.Headers.LastModified ?? null;
+
                     //show badge notification
                    ShowNotification("attention");
-
                 }
                 else
                 {
                     System.Diagnostics.Debug.WriteLine("Request returned error {0}:{1}", (int)response.StatusCode, 
                         response.StatusCode);
+                    ShowNotification("error");
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine(ex.Message);
+                ShowNotification("error");
             }
             finally
             {
