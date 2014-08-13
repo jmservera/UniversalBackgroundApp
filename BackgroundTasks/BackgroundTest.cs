@@ -4,6 +4,7 @@
     using System.IO;
     using System.Net;
     using System.Net.Http;
+    using System.Threading;
     using System.Threading.Tasks;
     using Windows.ApplicationModel.Background;
     using Windows.Data.Xml.Dom;
@@ -67,6 +68,7 @@
 
         const string fileName = "feed.xml";
         const string lastModifiedKey = "Last-Modified";
+        const string feedUrl = "http://jmservera.com/feed";
 
         public async void Run(IBackgroundTaskInstance taskInstance)
         {
@@ -74,7 +76,9 @@
             var deferral = taskInstance.GetDeferral();
             try
             {
-                await downloadFile();
+                CancellationTokenSource tokenSource = new CancellationTokenSource();
+                taskInstance.Canceled += (o, e) => tokenSource.Cancel();
+                await downloadFile(tokenSource.Token);
             }
             finally
             {
@@ -82,7 +86,7 @@
             }
         }
 
-        private static async System.Threading.Tasks.Task downloadFile()
+        private static async Task downloadFile(CancellationToken cancellationToken)
         {
             ShowNotification("activity");
             System.Diagnostics.Debug.WriteLine("Starting task");
@@ -101,21 +105,25 @@
 
             try
             {
-                var response = await client.GetAsync("http://jmservera.com/feed");
+                var response = await client.GetAsync(feedUrl, cancellationToken);
                 if (response.StatusCode == HttpStatusCode.NotModified)
                 {
                     //nothing to update, we already have the good one
                     ShowNotification("alert");
-                }
+                }                 
                 else if (response.StatusCode == HttpStatusCode.OK)
                 {
-                    var file = await folder.CreateFileAsync(fileName, Windows.Storage.CreationCollisionOption.ReplaceExisting);
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    var file = await folder.CreateFileAsync(fileName, 
+                        Windows.Storage.CreationCollisionOption.ReplaceExisting);
 
                     using (var stream = await response.Content.ReadAsStreamAsync())
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         using (var fileStream = await file.OpenStreamForWriteAsync())
                         {
-                            stream.CopyTo(fileStream);
+                           await stream.CopyToAsync(fileStream,4096,cancellationToken);
                         }
                     }
 
@@ -134,7 +142,7 @@
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine(ex.Message);
+                System.Diagnostics.Debug.WriteLine("Download File Exception: {0}",ex.Message);
                 ShowNotification("error");
             }
             finally
@@ -161,7 +169,7 @@
             }
             if (file == null)
             {
-                await downloadFile();
+                await downloadFile(new CancellationToken());
                 try
                 {
                     file = await folder.GetFileAsync(fileName);
@@ -171,9 +179,9 @@
                     return null;
                 }
             }
-            using (var fileStream = await file.OpenStreamForReadAsync())
+            using (var fileStream = await file.OpenSequentialReadAsync())
             {
-                using (StreamReader r = new StreamReader(fileStream))
+                using (StreamReader r = new StreamReader(fileStream.AsStreamForRead()))
                 {
                     return await r.ReadToEndAsync();
                 }
@@ -199,5 +207,7 @@
         {
             ShowNotification(null);
         }
+
+        
     }
 }
