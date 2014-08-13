@@ -76,7 +76,7 @@ namespace BackgroundApp
                 Window.Current.Content = rootFrame;
             }
             
-            BackgroundTasks.BackgroundTest.ClearNotification();
+            BackgroundTasks.BackgroundDemoTask.ClearNotification();
 
             if (rootFrame.Content == null)
             {

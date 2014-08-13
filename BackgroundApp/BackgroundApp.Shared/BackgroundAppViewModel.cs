@@ -8,7 +8,7 @@
     using Windows.Web.Syndication;
     public class BackgroundAppViewModel:INotifyPropertyChanged
     {
-        BackgroundTest test = new BackgroundTest();
+        BackgroundDemoTask test = new BackgroundDemoTask();
 
         private bool _isLoading;
 
@@ -43,12 +43,13 @@
             {
                 if (_isTaskRegistered)
                 {
-                    BackgroundTest.UnregisterTask();
+                    BackgroundDemoTask.UnregisterTask();
+                    _isTaskRegistered = false;
                 }
                 else
                 {
-                    await BackgroundTest.RegisterTaskAsync();
-                    _isTaskRegistered = BackgroundTest.IsTaskRegistered();
+                    await BackgroundDemoTask.RegisterTaskAsync();
+                    _isTaskRegistered = BackgroundDemoTask.IsTaskRegistered();
                     OnPropertyChanged("IsTaskRegistered");
                 }
             }
@@ -57,7 +58,8 @@
         public BackgroundAppViewModel()
         {
             Load();
-            _isTaskRegistered = BackgroundTest.IsTaskRegistered();
+            
+            _isTaskRegistered = BackgroundDemoTask.IsTaskRegistered();
         }
 
         public async void Load()

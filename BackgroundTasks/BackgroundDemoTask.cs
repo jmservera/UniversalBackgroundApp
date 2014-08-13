@@ -11,9 +11,9 @@
     using Windows.Foundation;
     using Windows.Storage;
     using Notifications = Windows.UI.Notifications;
-    public sealed class BackgroundTest : IBackgroundTask
+    public sealed class BackgroundDemoTask : IBackgroundTask
     {
-        const string FriendlyName = "BackgroundTestName";
+        const string FriendlyName = "BackgroundDemoTask";
 
         static BackgroundTaskRegistration _task;
 
@@ -45,14 +45,17 @@
             await BackgroundExecutionManager.RequestAccessAsync();
 
             //http://msdn.microsoft.com/en-us/library/windows/apps/windows.applicationmodel.background.timetrigger.aspx
-            IBackgroundTrigger trigger = new TimeTrigger(360, false); //6 hours
+            IBackgroundTrigger trigger = new TimeTrigger(15, false); //6 hours
 
             // Builds the background task.
             BackgroundTaskBuilder builder = new BackgroundTaskBuilder();
 
             builder.Name = FriendlyName;
-            builder.TaskEntryPoint = typeof(BackgroundTest).FullName;
+            builder.TaskEntryPoint = typeof(BackgroundDemoTask).FullName;
             builder.SetTrigger(trigger);
+
+            SystemCondition condition = new SystemCondition(SystemConditionType.InternetAvailable);
+            builder.AddCondition(condition);
 
             // Registers the background task, and get back a BackgroundTaskRegistration object representing the registered task.
             return builder.Register();
@@ -63,6 +66,7 @@
             if (IsTaskRegistered())
             {
                 _task.Unregister(true);
+                _task = null;
             }
         }
 

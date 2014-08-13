@@ -20,7 +20,7 @@
         <m2:SplashScreen Image="Assets\SplashScreen.png" />
       </m2:VisualElements>
       <Extensions>
-        <Extension Category="windows.backgroundTasks" EntryPoint="BackgroundTasks.BackgroundTest">
+        <Extension Category="windows.backgroundTasks" EntryPoint="BackgroundTasks.BackgroundDemoTask">
           <BackgroundTasks>
             <Task Type="timer" />
           </BackgroundTasks>
