@@ -24,7 +24,14 @@
                 <ColumnDefinition Width="150"/>
             </Grid.ColumnDefinitions>
             <TextBlock Text="{Binding Feed.Title.Text}" FontSize="70" Margin="100 25 10 10" TextTrimming="CharacterEllipsis"/>
-            <ToggleSwitch Grid.Column="1" IsOn="{Binding IsTaskRegistered, Mode=TwoWay}">Background Task</ToggleSwitch>
+            <StackPanel Grid.Column="1" >
+                <StackPanel Orientation="Horizontal">
+                    <ProgressBar Minimum="0" Maximum="100" Value="{Binding TaskProgress}" Height="10" Margin="10 10 10 10" Width="90"></ProgressBar>
+                    <CheckBox IsChecked="{Binding TaskCompleted}"/>
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsOn="{Binding IsTaskRegistered, Mode=TwoWay}" FontFamily="Global User Interface">Background Task</ToggleSwitch>
+                <Button Command="{Binding ClearFileCommand}">Clear File</Button>
+            </StackPanel>
         </Grid>
         <GridView Grid.Row="1" ItemsSource="{Binding Feed.Items}" Padding="100 0 0 0">
             <GridView.ItemTemplate>

@@ -10,37 +10,47 @@
     using Windows.Data.Xml.Dom;
     using Windows.Foundation;
     using Windows.Storage;
+    using Windows.Web.Http;
     using Notifications = Windows.UI.Notifications;
     public sealed class BackgroundDemoTask : IBackgroundTask
     {
         const string FriendlyName = "BackgroundDemoTask";
 
-        static BackgroundTaskRegistration _task;
+        static BackgroundTaskRegistration _current;
+        public static BackgroundTaskRegistration Current
+        {
+            get
+            {
+                IsTaskRegistered();
+                return _current;
+            }
+        }
 
         public static IAsyncOperation<BackgroundTaskRegistration> RegisterTaskAsync()
         {
             return registerAsyncCore().AsAsyncOperation();
         }
 
+        
         public static bool IsTaskRegistered()
         {
-            if (_task == null)
+            if (_current == null)
             {
                 foreach (var cur in BackgroundTaskRegistration.AllTasks)
                 {
                     if (cur.Value.Name == FriendlyName)
                     {
                         // The task is already registered.
-                        _task = (BackgroundTaskRegistration)(cur.Value);
+                        _current = (BackgroundTaskRegistration)(cur.Value);
                     }
                 }
             }
-            return _task != null;
+            return _current != null;
         }
         private static async Task<BackgroundTaskRegistration> registerAsyncCore()
         {
             if (IsTaskRegistered())
-                return _task;
+                return _current;
 
             await BackgroundExecutionManager.RequestAccessAsync();
 
@@ -65,14 +75,10 @@
         {
             if (IsTaskRegistered())
             {
-                _task.Unregister(true);
-                _task = null;
+                _current.Unregister(true);
+                _current = null;
             }
         }
-
-        const string fileName = "feed.xml";
-        const string lastModifiedKey = "Last-Modified";
-        const string feedUrl = "http://jmservera.com/feed";
 
         public async void Run(IBackgroundTaskInstance taskInstance)
         {
@@ -80,9 +86,27 @@
             var deferral = taskInstance.GetDeferral();
             try
             {
+                //create a cancellation token to notify task if the system cancelled it
                 CancellationTokenSource tokenSource = new CancellationTokenSource();
                 taskInstance.Canceled += (o, e) => tokenSource.Cancel();
-                await downloadFile(tokenSource.Token);
+
+                CachedFileController fileController = new CachedFileController();
+
+                fileController.NotifyMessage += (o,message) =>
+                {
+                    ShowNotification(message);
+                };
+                var progress = new Progress<HttpProgress>(
+                    (p) => {
+                        taskInstance.Progress = (uint)(p.BytesReceived * 100 / (p.TotalBytesToReceive ?? (50 * 1024))); 
+                    });
+                await fileController.DownloadFile().AsTask(tokenSource.Token,progress);
+                taskInstance.Progress = 100;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Download File Exception: {0}", ex.Message);
+                ShowNotification("error");
             }
             finally
             {
@@ -90,108 +114,11 @@
             }
         }
 
-        private static async Task downloadFile(CancellationToken cancellationToken)
-        {
-            ShowNotification("activity");
-            System.Diagnostics.Debug.WriteLine("Starting task");
-
-            var folder = Windows.Storage.ApplicationData.Current.TemporaryFolder;
-            var localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
-
-            HttpClient client = new HttpClient();
-
-            if (localSettings.Values.ContainsKey(lastModifiedKey))
-            {
-                //this will avoid downloading a large file when we already have a fresh copy
-                client.DefaultRequestHeaders.IfModifiedSince = (DateTimeOffset)localSettings.Values[lastModifiedKey];
-                //maybe we could also use ETag...
-            }
-
-            try
-            {
-                var response = await client.GetAsync(feedUrl, cancellationToken);
-                if (response.StatusCode == HttpStatusCode.NotModified)
-                {
-                    //nothing to update, we already have the good one
-                    ShowNotification("alert");
-                }                 
-                else if (response.StatusCode == HttpStatusCode.OK)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    var file = await folder.CreateFileAsync(fileName, 
-                        Windows.Storage.CreationCollisionOption.ReplaceExisting);
-
-                    using (var stream = await response.Content.ReadAsStreamAsync())
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        using (var fileStream = await file.OpenStreamForWriteAsync())
-                        {
-                           await stream.CopyToAsync(fileStream,4096,cancellationToken);
-                        }
-                    }
-
-                    //store the last modified value, cannot store it inside the file properties, not allowed by w8
-                    localSettings.Values[lastModifiedKey] = response.Content.Headers.LastModified ?? null;
-
-                    //show badge notification
-                    ShowNotification("attention");
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine("Request returned error {0}:{1}", (int)response.StatusCode,
-                        response.StatusCode);
-                    ShowNotification("error");
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine("Download File Exception: {0}",ex.Message);
-                ShowNotification("error");
-            }
-            finally
-            {
-                System.Diagnostics.Debug.WriteLine("End Task");
-            }
-        }
-
-        public IAsyncOperation<string> GetFile()
-        {
-            return getFile().AsAsyncOperation();
-        }
-
-        private async Task<string> getFile()
-        {
-            var folder = Windows.Storage.ApplicationData.Current.TemporaryFolder;
-            StorageFile file = null;
-            try
-            {
-                file = await folder.GetFileAsync(fileName);
-            }
-            catch (FileNotFoundException)
-            {
-            }
-            if (file == null)
-            {
-                await downloadFile(new CancellationToken());
-                try
-                {
-                    file = await folder.GetFileAsync(fileName);
-                }
-                catch (FileNotFoundException)
-                {
-                    return null;
-                }
-            }
-            using (var fileStream = await file.OpenSequentialReadAsync())
-            {
-                using (StreamReader r = new StreamReader(fileStream.AsStreamForRead()))
-                {
-                    return await r.ReadToEndAsync();
-                }
-            }
-        }
-        public static void ShowNotification(string value) //"alert" or "activity"
+        /// <summary>
+        /// Shows badge notifications in live tile
+        /// </summary>
+        /// <param name="value">"alert", "activity" or String.Empty/null to clear</param>
+        public static void ShowNotification(string value) 
         {
             if (!string.IsNullOrEmpty(value))
             {
@@ -211,7 +138,5 @@
         {
             ShowNotification(null);
         }
-
-        
     }
 }
