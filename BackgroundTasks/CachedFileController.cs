@@ -75,7 +75,7 @@
             }
         }
 
-        private static System.Threading.ReaderWriterLockSlim _lock= new System.Threading.ReaderWriterLockSlim();
+        private static ReaderWriterLockSlim _lock= new ReaderWriterLockSlim();
 
         private async Task downloadFile(CancellationToken cancellationToken, IProgress<HttpProgress> progress)
         {
@@ -120,14 +120,14 @@
                             {
                                 await stream.CopyToAsync(fileStream, 4096, cancellationToken);
                             }
+                            //store the last modified value, cannot store it inside the file properties, not allowed by w8
+                            localSettings.Values[lastModifiedKey] = response.Content.Headers.LastModified ?? null;
                         }
                         finally
                         {
                             _lock.ExitWriteLock();
                         }
                     }
-                    //store the last modified value, cannot store it inside the file properties, not allowed by w8
-                    localSettings.Values[lastModifiedKey] = response.Content.Headers.LastModified ?? null;
 
                     //show badge notification
                     OnNotifyMessage("attention");
@@ -160,8 +160,16 @@
             }
             if (file != null)
             {
-                await file.DeleteAsync();
-                localSettings.Values[lastModifiedKey] = null;
+                _lock.EnterWriteLock();
+                try
+                {
+                    await file.DeleteAsync();
+                    localSettings.Values[lastModifiedKey] = null;
+                }
+                finally
+                {
+                    _lock.ExitWriteLock();
+                }
             }
         }
     }
