@@ -13,7 +13,7 @@
     {
         const string fileName = "feed.xml";
         const string lastModifiedKey = "Last-Modified";
-        const string feedUrl = "http://lifehacker.com/rss";// "http://jmservera.com/feed";
+        const string feedUrl = "http://jmservera.com/feed";
 
         public event EventHandler<string> NotifyMessage;
 
@@ -35,7 +35,7 @@
                 (cancellationToken, progress) => downloadFile(cancellationToken, progress));
         }
 
-        private async Task<string> getFile(CancellationToken token, IProgress<HttpProgress> progress)
+        private async Task<string> getFile(CancellationToken cancellationToken, IProgress<HttpProgress> progress)
         {
             var folder = AppData.Current.TemporaryFolder;
             StorageFile file = null;
@@ -48,7 +48,7 @@
             }
             if (file == null)
             {
-                await downloadFile(token, progress);
+                await downloadFile(cancellationToken, progress);
                 try
                 {
                     file = await folder.GetFileAsync(fileName);
@@ -58,7 +58,7 @@
                     return null;
                 }
             }
-            _lock.EnterReadLock();
+            await _semaphore.WaitAsync(cancellationToken);
             try
             {
                 using (var fileStream = await file.OpenSequentialReadAsync())
@@ -71,11 +71,11 @@
             }
             finally
             {
-                _lock.ExitReadLock();
+                _semaphore.Release();
             }
         }
 
-        private static ReaderWriterLockSlim _lock= new ReaderWriterLockSlim();
+        private static SemaphoreSlim _semaphore = new SemaphoreSlim(1,1);
 
         private async Task downloadFile(CancellationToken cancellationToken, IProgress<HttpProgress> progress)
         {
@@ -106,16 +106,17 @@
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    var file = await folder.CreateFileAsync(fileName,
-                        Windows.Storage.CreationCollisionOption.ReplaceExisting);
+                    
 
                     using (var istream = await response.Content.ReadAsInputStreamAsync())
                     {
                         var stream = istream.AsStreamForRead();
                         cancellationToken.ThrowIfCancellationRequested();
-                        _lock.EnterWriteLock();
+                        await _semaphore.WaitAsync(cancellationToken);
                         try
                         {
+                            var file = await folder.CreateFileAsync(fileName,
+                                Windows.Storage.CreationCollisionOption.ReplaceExisting);
                             using (var fileStream = await file.OpenStreamForWriteAsync())
                             {
                                 await stream.CopyToAsync(fileStream, 4096, cancellationToken);
@@ -125,7 +126,7 @@
                         }
                         finally
                         {
-                            _lock.ExitWriteLock();
+                            _semaphore.Release();
                         }
                     }
 
@@ -160,15 +161,26 @@
             }
             if (file != null)
             {
-                _lock.EnterWriteLock();
+                _semaphore.Wait();
                 try
                 {
-                    await file.DeleteAsync();
+                    try
+                    {
+                        //double check for thread safety
+                        file = await folder.GetFileAsync(fileName);
+                    }
+                    catch (FileNotFoundException)
+                    {
+                    }
+                    if (file != null)
+                    {
+                        await file.DeleteAsync();
+                    }
                     localSettings.Values[lastModifiedKey] = null;
                 }
                 finally
                 {
-                    _lock.ExitWriteLock();
+                    _semaphore.Release();
                 }
             }
         }
