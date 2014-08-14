@@ -17,16 +17,21 @@
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" DataContext="{StaticResource vm}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="60"/>
+            <RowDefinition Height="120"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition/>
-                <ColumnDefinition Width="100"/>
-            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition/>
+                <RowDefinition/>
+            </Grid.RowDefinitions>
             <TextBlock Text="{Binding Feed.Title.Text}" FontSize="45" Margin="5" TextTrimming="CharacterEllipsis"/>
-            <ToggleSwitch Grid.Column="1"  IsOn="{Binding IsTaskRegistered, Mode=TwoWay}">Background Task</ToggleSwitch>
+            <ProgressBar Minimum="0" Maximum="100" 
+                                 Value="{Binding TaskProgress}" Margin="5" VerticalAlignment="Top"></ProgressBar>
+            <StackPanel Grid.Row="1" Orientation="Horizontal" >
+                <ToggleSwitch Margin="0" IsOn="{Binding IsTaskRegistered, Mode=TwoWay}" FontFamily="Global User Interface">Background Task</ToggleSwitch>
+                <Button Command="{Binding ClearFileCommand}">Clear File</Button>
+            </StackPanel>
         </Grid>
 
         <GridView Grid.Row="1" ItemsSource="{Binding Feed.Items}" Margin="15" Padding="0 10 0 0">
