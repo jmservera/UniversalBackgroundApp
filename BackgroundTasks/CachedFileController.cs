@@ -13,7 +13,7 @@
     {
         const string fileName = "feed.xml";
         const string lastModifiedKey = "Last-Modified";
-        const string feedUrl = "http://jmservera.com/feed";
+        const string feedUrl = "http://jmservera.com/feed/";
 
         public event EventHandler<string> NotifyMessage;
 
