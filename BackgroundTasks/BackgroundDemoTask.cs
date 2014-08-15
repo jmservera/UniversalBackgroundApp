@@ -86,22 +86,18 @@
             var deferral = taskInstance.GetDeferral();
             try
             {
-                //create a cancellation token to notify task if the system cancelled it
-                CancellationTokenSource tokenSource = new CancellationTokenSource();
-                taskInstance.Canceled += (o, e) => tokenSource.Cancel();
-
                 CachedFileController fileController = new CachedFileController();
 
                 fileController.NotifyMessage += (o,message) =>
                 {
                     ShowNotificationBadge(message);
                 };
-                var progress = new Progress<HttpProgress>(
-                    (p) => {
-                        taskInstance.Progress = (uint)(p.BytesReceived * 100 / (p.TotalBytesToReceive ?? (50 * 1024))); 
-                    });
-                await fileController.DownloadFileAsync().AsTask(tokenSource.Token,progress);
-                taskInstance.Progress = 100;
+                var asyncDownload= fileController.DownloadFileAsync();
+                asyncDownload.Progress = (o, p) =>
+                {
+                    taskInstance.Progress = (uint)(p.BytesReceived * 100 / (p.TotalBytesToReceive ?? (50 * 1024)));
+                };
+                await asyncDownload;
             }
             catch (Exception ex)
             {

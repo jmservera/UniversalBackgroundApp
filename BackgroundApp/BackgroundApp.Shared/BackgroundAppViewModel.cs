@@ -84,10 +84,6 @@ using Windows.Web.Syndication;
             get { return _taskCompleted; }
             set
             {
-                if (!_taskCompleted && value)
-                {
-                    Load();
-                }
                 SetProperty(ref _taskCompleted, value);
             }
         }
@@ -144,6 +140,7 @@ using Windows.Web.Syndication;
             await dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
                 TaskCompleted = true;
+                Load();
             });
         }
 

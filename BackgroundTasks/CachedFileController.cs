@@ -29,11 +29,7 @@
                 (cancellationToken, progress) => getFileAsync(cancellationToken, progress));
         }
 
-        public IAsyncActionWithProgress<HttpProgress> DownloadFileAsync()
-        {
-            return AsyncInfo.Run<HttpProgress>(
-                (cancellationToken, progress) => downloadFileAsync(cancellationToken, progress));
-        }
+        
 
         private async Task<string> getFileAsync(CancellationToken cancellationToken, IProgress<HttpProgress> progress)
         {
@@ -84,7 +80,11 @@
             if (!Semaphore.TryOpenExisting("BackgroundTasks.CachedFileController", out _semaphore))
                 _semaphore = new Semaphore(1, 1, "BackgroundTasks.CachedFileController");
         }
-
+        public IAsyncActionWithProgress<HttpProgress> DownloadFileAsync()
+        {
+            return AsyncInfo.Run<HttpProgress>(
+                (cancellationToken, progress) => downloadFileAsync(cancellationToken, progress));
+        }
         private async Task downloadFileAsync(CancellationToken cancellationToken, IProgress<HttpProgress> progress)
         {
             OnNotifyMessage("activity");
@@ -148,6 +148,13 @@
                         response.StatusCode);
                     OnNotifyMessage("error");
                 }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Request thrown exception {0}:{1}", 
+                    ex.HResult,
+                    ex.Message);
+                OnNotifyMessage("error");
             }
             finally
             {
