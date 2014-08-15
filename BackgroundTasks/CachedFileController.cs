@@ -58,7 +58,10 @@
                     return null;
                 }
             }
-            await _semaphore.WaitAsync(cancellationToken);
+            while (!_semaphore.WaitOne(0))
+            {
+                await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
+            }
             try
             {
                 using (var fileStream = await file.OpenSequentialReadAsync())
@@ -75,7 +78,12 @@
             }
         }
 
-        private static SemaphoreSlim _semaphore = new SemaphoreSlim(1,1);
+        private static Semaphore _semaphore;
+        static CachedFileController()
+        {
+            if (!Semaphore.TryOpenExisting("BackgroundTasks.CachedFileController", out _semaphore))
+                _semaphore = new Semaphore(1, 1, "BackgroundTasks.CachedFileController");
+        }
 
         private async Task downloadFileAsync(CancellationToken cancellationToken, IProgress<HttpProgress> progress)
         {
@@ -96,7 +104,7 @@
 
             try
             {
-                var response=await client.GetAsync(new Uri(feedUrl)).AsTask(cancellationToken,progress);
+                var response = await client.GetAsync(new Uri(feedUrl)).AsTask(cancellationToken, progress);
                 if (response.StatusCode == HttpStatusCode.NotModified)
                 {
                     //nothing to update, we already have the good one
@@ -110,7 +118,10 @@
                     {
                         var stream = istream.AsStreamForRead();
                         cancellationToken.ThrowIfCancellationRequested();
-                        await _semaphore.WaitAsync(cancellationToken);
+                        while (!_semaphore.WaitOne(0))
+                        {
+                            await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
+                        }
                         try
                         {
                             var file = await folder.CreateFileAsync(fileName,
@@ -150,36 +161,32 @@
             var localSettings = AppData.Current.LocalSettings;
 
             StorageFile file = null;
+            while (!_semaphore.WaitOne(0))
+            {
+                await Task.Delay(1000).ConfigureAwait(false);
+            }
             try
             {
-                file = await folder.GetFileAsync(fileName);
+                try
+                {
+                    file = await folder.GetFileAsync(fileName);
+                }
+                catch (FileNotFoundException)
+                {
+                }
+
+                if (file != null)
+                {
+                    await file.DeleteAsync();
+                }
+                localSettings.Values[lastModifiedKey] = null;
             }
             catch (FileNotFoundException)
             {
             }
-            if (file != null)
+            finally
             {
-                _semaphore.Wait();
-                try
-                {
-                    try
-                    {
-                        //double check for thread safety
-                        file = await folder.GetFileAsync(fileName);
-                    }
-                    catch (FileNotFoundException)
-                    {
-                    }
-                    if (file != null)
-                    {
-                        await file.DeleteAsync();
-                    }
-                    localSettings.Values[lastModifiedKey] = null;
-                }
-                finally
-                {
-                    _semaphore.Release();
-                }
+                _semaphore.Release();
             }
         }
     }
