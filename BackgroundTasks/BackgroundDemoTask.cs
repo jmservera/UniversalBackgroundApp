@@ -31,7 +31,6 @@
             return registerAsyncCore().AsAsyncOperation();
         }
 
-        
         public static bool IsTaskRegistered()
         {
             if (_current == null)
@@ -68,7 +67,8 @@
             builder.AddCondition(condition);
 
             // Registers the background task, and get back a BackgroundTaskRegistration object representing the registered task.
-            return builder.Register();
+            _current = builder.Register();
+            return _current;
         }
 
         public static void UnregisterTask()
