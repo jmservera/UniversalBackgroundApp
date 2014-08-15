@@ -106,8 +106,6 @@
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    
-
                     using (var istream = await response.Content.ReadAsInputStreamAsync())
                     {
                         var stream = istream.AsStreamForRead();
