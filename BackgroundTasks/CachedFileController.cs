@@ -23,19 +23,19 @@
                 NotifyMessage(this, message);
         }
 
-        public IAsyncOperationWithProgress<string, HttpProgress> GetFile()
+        public IAsyncOperationWithProgress<string, HttpProgress> GetFileAsync()
         {
             return AsyncInfo.Run<string, HttpProgress>(
-                (cancellationToken, progress) => getFile(cancellationToken, progress));
+                (cancellationToken, progress) => getFileAsync(cancellationToken, progress));
         }
 
-        public IAsyncActionWithProgress<HttpProgress> DownloadFile()
+        public IAsyncActionWithProgress<HttpProgress> DownloadFileAsync()
         {
             return AsyncInfo.Run<HttpProgress>(
-                (cancellationToken, progress) => downloadFile(cancellationToken, progress));
+                (cancellationToken, progress) => downloadFileAsync(cancellationToken, progress));
         }
 
-        private async Task<string> getFile(CancellationToken cancellationToken, IProgress<HttpProgress> progress)
+        private async Task<string> getFileAsync(CancellationToken cancellationToken, IProgress<HttpProgress> progress)
         {
             var folder = AppData.Current.TemporaryFolder;
             StorageFile file = null;
@@ -48,7 +48,7 @@
             }
             if (file == null)
             {
-                await downloadFile(cancellationToken, progress);
+                await downloadFileAsync(cancellationToken, progress);
                 try
                 {
                     file = await folder.GetFileAsync(fileName);
@@ -77,7 +77,7 @@
 
         private static SemaphoreSlim _semaphore = new SemaphoreSlim(1,1);
 
-        private async Task downloadFile(CancellationToken cancellationToken, IProgress<HttpProgress> progress)
+        private async Task downloadFileAsync(CancellationToken cancellationToken, IProgress<HttpProgress> progress)
         {
             OnNotifyMessage("activity");
             System.Diagnostics.Debug.WriteLine("Starting task");
@@ -144,7 +144,7 @@
             }
         }
 
-        public async void ClearCache()
+        public async void ClearCacheAsync()
         {
             var folder = AppData.Current.TemporaryFolder;
             var localSettings = AppData.Current.LocalSettings;

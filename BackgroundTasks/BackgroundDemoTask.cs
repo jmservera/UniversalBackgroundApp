@@ -94,19 +94,19 @@
 
                 fileController.NotifyMessage += (o,message) =>
                 {
-                    ShowNotification(message);
+                    ShowNotificationBadge(message);
                 };
                 var progress = new Progress<HttpProgress>(
                     (p) => {
                         taskInstance.Progress = (uint)(p.BytesReceived * 100 / (p.TotalBytesToReceive ?? (50 * 1024))); 
                     });
-                await fileController.DownloadFile().AsTask(tokenSource.Token,progress);
+                await fileController.DownloadFileAsync().AsTask(tokenSource.Token,progress);
                 taskInstance.Progress = 100;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine("Download File Exception: {0}", ex.Message);
-                ShowNotification("error");
+                ShowNotificationBadge("error");
             }
             finally
             {
@@ -118,7 +118,7 @@
         /// Shows badge notifications in live tile
         /// </summary>
         /// <param name="value">"alert", "activity" or String.Empty/null to clear</param>
-        public static void ShowNotification(string value) 
+        public static void ShowNotificationBadge(string value) 
         {
             if (!string.IsNullOrEmpty(value))
             {
@@ -136,7 +136,7 @@
 
         public static void ClearNotification()
         {
-            ShowNotification(null);
+            ShowNotificationBadge(null);
         }
     }
 }

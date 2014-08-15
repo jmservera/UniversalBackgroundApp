@@ -63,7 +63,7 @@ using Windows.Web.Syndication;
         {
             ClearFileCommand = new RelayCommand(() =>
             {
-                fileController.ClearCache();
+                fileController.ClearCacheAsync();
                 Clear();
             },() => { return true; });
 
@@ -153,12 +153,16 @@ using Windows.Web.Syndication;
             IsLoading = true;
             try
             {
-                var value = await fileController.GetFile();
+                var value = await fileController.GetFileAsync();
                 XmlDocument doc=new XmlDocument();
                 SyndicationFeed feed = new SyndicationFeed();
                 doc.LoadXml(value);
                 feed.LoadFromXml(doc);
                 Feed = feed;
+            }
+            catch (Exception ex)
+            {
+                Feed = new SyndicationFeed(ex.Message, ex.Message, null);
             }
             finally
             {
