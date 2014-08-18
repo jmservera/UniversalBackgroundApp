@@ -105,7 +105,7 @@ namespace BackgroundApp
             }
 
             // Ensure the current window is active
-            Window.Current.Activate();
+            Window.Current.Activate();            
         }
 
 #if WINDOWS_PHONE_APP

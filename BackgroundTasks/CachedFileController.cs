@@ -15,6 +15,8 @@
         const string lastModifiedKey = "Last-Modified";
         const string feedUrl = "http://jmservera.com/feed/";
 
+        private static AsyncSemaphore _semaphore = new AsyncSemaphore(1, 1, "BackgroundTasks.CachedFileController");
+
         public event EventHandler<string> NotifyMessage;
 
         private void OnNotifyMessage(string message)
@@ -28,13 +30,16 @@
             return AsyncInfo.Run<string, HttpProgress>(
                 (cancellationToken, progress) => getFileAsync(cancellationToken, progress));
         }
-
         
 
         private async Task<string> getFileAsync(CancellationToken cancellationToken, IProgress<HttpProgress> progress)
         {
             var folder = AppData.Current.TemporaryFolder;
             StorageFile file = null;
+            await _semaphore.WaitOneAsync();
+            System.Diagnostics.Debug.WriteLine("getFile semaphore");
+            try
+            {
             try
             {
                 file = await folder.GetFileAsync(fileName);
@@ -54,12 +59,7 @@
                     return null;
                 }
             }
-            while (!_semaphore.WaitOne(0))
-            {
-                await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
-            }
-            try
-            {
+
                 using (var fileStream = await file.OpenSequentialReadAsync())
                 {
                     using (StreamReader r = new StreamReader(fileStream.AsStreamForRead()))
@@ -70,16 +70,11 @@
             }
             finally
             {
+                System.Diagnostics.Debug.WriteLine("getFile semaphore release");
                 _semaphore.Release();
             }
         }
 
-        private static Semaphore _semaphore;
-        static CachedFileController()
-        {
-            if (!Semaphore.TryOpenExisting("BackgroundTasks.CachedFileController", out _semaphore))
-                _semaphore = new Semaphore(1, 1, "BackgroundTasks.CachedFileController");
-        }
         public IAsyncActionWithProgress<HttpProgress> DownloadFileAsync()
         {
             return AsyncInfo.Run<HttpProgress>(
@@ -117,11 +112,13 @@
                     using (var istream = await response.Content.ReadAsInputStreamAsync())
                     {
                         var stream = istream.AsStreamForRead();
-                        cancellationToken.ThrowIfCancellationRequested();
-                        while (!_semaphore.WaitOne(0))
-                        {
-                            await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
-                        }
+                        //cancellationToken.ThrowIfCancellationRequested();
+                        //while (!_semaphore.WaitOne(0))
+                        //{
+                        //    await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
+                        //}
+                        await _semaphore.WaitOneAsync();
+                        System.Diagnostics.Debug.WriteLine("downloadfile semaphore");
                         try
                         {
                             var file = await folder.CreateFileAsync(fileName,
@@ -135,12 +132,13 @@
                         }
                         finally
                         {
+                            System.Diagnostics.Debug.WriteLine("downloadfile semaphore release");
                             _semaphore.Release();
                         }
                     }
 
                     //show badge notification
-                    OnNotifyMessage("attention");
+                    OnNotifyMessage("newMessage");
                 }
                 else
                 {
@@ -151,7 +149,7 @@
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("Request thrown exception {0}:{1}", 
+                System.Diagnostics.Debug.WriteLine("Request threw exception {0}:{1}", 
                     ex.HResult,
                     ex.Message);
                 OnNotifyMessage("error");
@@ -168,10 +166,8 @@
             var localSettings = AppData.Current.LocalSettings;
 
             StorageFile file = null;
-            while (!_semaphore.WaitOne(0))
-            {
-                await Task.Delay(1000).ConfigureAwait(false);
-            }
+            await _semaphore.WaitOneAsync();
+            System.Diagnostics.Debug.WriteLine("clearcache semaphore");
             try
             {
                 try
@@ -193,6 +189,8 @@
             }
             finally
             {
+                System.Diagnostics.Debug.WriteLine("clearcache semaphore release");
+
                 _semaphore.Release();
             }
         }

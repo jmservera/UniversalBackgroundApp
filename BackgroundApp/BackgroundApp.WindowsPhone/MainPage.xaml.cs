@@ -36,6 +36,7 @@ namespace BackgroundApp
         /// This parameter is typically used to configure the page.</param>
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
+
             // TODO: Prepare page for display here.
 
             // TODO: If your application contains multiple pages, ensure that you are
