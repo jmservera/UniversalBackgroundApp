@@ -75,75 +75,75 @@
                 });
         }
 
-public IAsyncActionWithProgress<HttpProgress> DownloadFileAsync()
-{
-    return AsyncInfo.Run<HttpProgress>(
-        async (cancellationToken, progress) =>
+        public IAsyncActionWithProgress<HttpProgress> DownloadFileAsync()
         {
-            OnNotifyMessage("activity");
-
-            var folder = AppData.Current.TemporaryFolder;
-            var localSettings = AppData.Current.LocalSettings;
-
-            HttpClient client = new HttpClient();
-
-            if (localSettings.Values.ContainsKey(lastModifiedKey))
-            {
-                //this will avoid downloading a large file when we already have a fresh copy
-                client.DefaultRequestHeaders.IfModifiedSince = (DateTimeOffset)localSettings.Values[lastModifiedKey];
-                //maybe we could also use ETag...
-            }
-
-            try
-            {
-                var response = await client.GetAsync(new Uri(feedUrl)).AsTask(cancellationToken, progress);
-                if (response.StatusCode == HttpStatusCode.NotModified)
+            return AsyncInfo.Run<HttpProgress>(
+                async (cancellationToken, progress) =>
                 {
-                    //nothing to update, we already have the good one
-                    OnNotifyMessage("alert");
-                }
-                else if (response.StatusCode == HttpStatusCode.Ok)
-                {
-                    using (var contentStream = await response.Content.ReadAsInputStreamAsync())
+                    OnNotifyMessage("activity");
+
+                    var folder = AppData.Current.TemporaryFolder;
+                    var localSettings = AppData.Current.LocalSettings;
+
+                    HttpClient client = new HttpClient();
+
+                    if (localSettings.Values.ContainsKey(lastModifiedKey))
                     {
-                        var stream = contentStream.AsStreamForRead();
-                        Logger.Log("downloadfile semaphore");
-                        await _semaphore.WaitOneAsync();
-                        try
+                        //this will avoid downloading a large file when we already have a fresh copy
+                        client.DefaultRequestHeaders.IfModifiedSince = (DateTimeOffset)localSettings.Values[lastModifiedKey];
+                        //maybe we could also use ETag...
+                    }
+
+                    try
+                    {
+                        var response = await client.GetAsync(new Uri(feedUrl)).AsTask(cancellationToken, progress);
+                        if (response.StatusCode == HttpStatusCode.NotModified)
                         {
-                            Logger.Log("downloadfile semaphore taken");
-                            var file = await folder.CreateFileAsync(fileName,
-                                Windows.Storage.CreationCollisionOption.ReplaceExisting);
-                            using (var fileStream = await file.OpenStreamForWriteAsync())
-                            {
-                                await stream.CopyToAsync(fileStream, 4096, cancellationToken);
-                            }
-                            //store the last modified value, cannot store it inside the file properties, not allowed by w8
-                            localSettings.Values[lastModifiedKey] = response.Content.Headers.LastModified ?? null;
-                            //show badge notification
-                            OnNotifyMessage("newMessage");
+                            //nothing to update, we already have the good one
+                            OnNotifyMessage("alert");
                         }
-                        finally
+                        else if (response.StatusCode == HttpStatusCode.Ok)
                         {
-                            _semaphore.Release();
-                            Logger.Log("downloadfile semaphore released");
+                            using (var contentStream = await response.Content.ReadAsInputStreamAsync())
+                            {
+                                var stream = contentStream.AsStreamForRead();
+                                Logger.Log("downloadfile semaphore");
+                                await _semaphore.WaitOneAsync();
+                                try
+                                {
+                                    Logger.Log("downloadfile semaphore taken");
+                                    var file = await folder.CreateFileAsync(fileName,
+                                        Windows.Storage.CreationCollisionOption.ReplaceExisting);
+                                    using (var fileStream = await file.OpenStreamForWriteAsync())
+                                    {
+                                        await stream.CopyToAsync(fileStream, 4096, cancellationToken);
+                                    }
+                                    //store the last modified value, cannot store it inside the file properties, not allowed by w8
+                                    localSettings.Values[lastModifiedKey] = response.Content.Headers.LastModified ?? null;
+                                    //show badge notification
+                                    OnNotifyMessage("newMessage");
+                                }
+                                finally
+                                {
+                                    _semaphore.Release();
+                                    Logger.Log("downloadfile semaphore released");
+                                }
+                            }
+                        }
+                        else
+                        {
+                            Logger.Log("Request returned error {0}:{1}",
+                                (int)response.StatusCode, response.StatusCode);
+                            OnNotifyMessage("error");
                         }
                     }
-                }
-                else
-                {
-                    Logger.Log("Request returned error {0}:{1}",
-                        (int)response.StatusCode, response.StatusCode);
-                    OnNotifyMessage("error");
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Log("Request threw exception {0}:{1}", ex.HResult, ex.Message);
-                OnNotifyMessage("error");
-            }
-        });
-}
+                    catch (Exception ex)
+                    {
+                        Logger.Log("Request threw exception {0}:{1}", ex.HResult, ex.Message);
+                        OnNotifyMessage("error");
+                    }
+                });
+        }
 
         public async void ClearCacheAsync()
         {

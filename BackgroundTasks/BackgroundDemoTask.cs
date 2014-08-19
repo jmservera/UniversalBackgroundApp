@@ -10,8 +10,10 @@
     using Windows.ApplicationModel.Background;
     using Windows.Data.Xml.Dom;
     using Windows.Foundation;
+    using Windows.Foundation.Metadata;
     using Windows.Storage;
     using Windows.Web.Http;
+    using Windows.Web.Syndication;
     using Notifications = Windows.UI.Notifications;
     public sealed class BackgroundDemoTask : IBackgroundTask
     {
@@ -100,11 +102,20 @@
                     taskInstance.Progress = (uint)(p.BytesReceived * 100 / (p.TotalBytesToReceive ?? (50 * 1024)));
                 };
                 await asyncDownload;
+
+                //now count feed posts
+                var file = await fileController.GetFileAsync();
+                XmlDocument doc = new XmlDocument();
+                doc.LoadXml(file);
+                SyndicationFeed feed = new SyndicationFeed();
+                feed.LoadFromXml(doc);
+                ShowNotificationBadge(feed.Items.Count);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("Download File Exception: {0}", ex.Message);
+                Logger.Log("Download File Exception: {0}", ex.Message);
                 ShowNotificationBadge("error");
+                ShowNotificationBadge(0);
             }
             finally
             {
@@ -113,6 +124,7 @@
             }
         }
 
+        [DefaultOverload]
         /// <summary>
         /// Shows badge notifications in live tile
         /// </summary>
@@ -133,9 +145,19 @@
             }
         }
 
+        public static void ShowNotificationBadge(int value)
+        {
+            var badgeXml = Notifications.BadgeUpdateManager.GetTemplateContent(Notifications.BadgeTemplateType.BadgeNumber);
+            var badgeElement = (XmlElement)badgeXml.SelectSingleNode("/badge");
+            badgeElement.SetAttribute("value", value.ToString());
+            var notification = new Notifications.BadgeNotification(badgeXml);
+            Notifications.BadgeUpdateManager.CreateBadgeUpdaterForApplication().Update(notification);
+        }
+
         public static void ClearNotification()
         {
             ShowNotificationBadge(null);
+            ShowNotificationBadge(0);
         }
     }
 }
