@@ -28,62 +28,59 @@
         public IAsyncOperationWithProgress<string, HttpProgress> GetFileAsync()
         {
             return AsyncInfo.Run<string, HttpProgress>(
-                (cancellationToken, progress) => getFileAsync(cancellationToken, progress));
-        }
-        
+                async (cancellationToken, progress) =>
+                {
+                    var folder = AppData.Current.TemporaryFolder;
+                    StorageFile file = null;
 
-        private async Task<string> getFileAsync(CancellationToken cancellationToken, IProgress<HttpProgress> progress)
-        {
-            var folder = AppData.Current.TemporaryFolder;
-            StorageFile file = null;
-            await _semaphore.WaitOneAsync();
-            System.Diagnostics.Debug.WriteLine("getFile semaphore");
-            try
-            {
-            try
-            {
-                file = await folder.GetFileAsync(fileName);
-            }
-            catch (FileNotFoundException)
-            {
-            }
-            if (file == null)
-            {
-                await downloadFileAsync(cancellationToken, progress);
-                try
-                {
-                    file = await folder.GetFileAsync(fileName);
-                }
-                catch (FileNotFoundException)
-                {
-                    return null;
-                }
-            }
-
-                using (var fileStream = await file.OpenSequentialReadAsync())
-                {
-                    using (StreamReader r = new StreamReader(fileStream.AsStreamForRead()))
+                    try
                     {
-                        return await r.ReadToEndAsync();
+                        file = await folder.GetFileAsync(fileName);
                     }
-                }
-            }
-            finally
-            {
-                System.Diagnostics.Debug.WriteLine("getFile semaphore release");
-                _semaphore.Release();
-            }
+                    catch (FileNotFoundException)
+                    {
+                        Logger.Log("file not found, need to download");
+                    }
+                    if (file == null)
+                    {
+                        await DownloadFileAsync();
+                        try
+                        {
+                            file = await folder.GetFileAsync(fileName);
+                        }
+                        catch (FileNotFoundException)
+                        {
+                            Logger.Log("file not found, something bizarre happened while downoladiong :(");
+                            return null;
+                        }
+                    }
+                    Logger.Log("getFile semaphore");
+                    await _semaphore.WaitOneAsync();
+                    try
+                    {
+                        Logger.Log("getFile semaphore taken");
+                        using (var fileStream = await file.OpenSequentialReadAsync())
+                        {
+                            using (StreamReader r = new StreamReader(fileStream.AsStreamForRead()))
+                            {
+                                return await r.ReadToEndAsync();
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        _semaphore.Release();
+                        Logger.Log("getFile semaphore released");
+                    }
+                });
         }
 
-        public IAsyncActionWithProgress<HttpProgress> DownloadFileAsync()
-        {
-            return AsyncInfo.Run<HttpProgress>(
-                (cancellationToken, progress) => downloadFileAsync(cancellationToken, progress));
-        }
-        private async Task downloadFileAsync(CancellationToken cancellationToken, IProgress<HttpProgress> progress)
+public IAsyncActionWithProgress<HttpProgress> DownloadFileAsync()
+{
+    return AsyncInfo.Run<HttpProgress>(
+        async (cancellationToken, progress) =>
         {
             OnNotifyMessage("activity");
-            System.Diagnostics.Debug.WriteLine("Starting task");
 
             var folder = AppData.Current.TemporaryFolder;
             var localSettings = AppData.Current.LocalSettings;
@@ -107,20 +104,14 @@
                 }
                 else if (response.StatusCode == HttpStatusCode.Ok)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    using (var istream = await response.Content.ReadAsInputStreamAsync())
+                    using (var contentStream = await response.Content.ReadAsInputStreamAsync())
                     {
-                        var stream = istream.AsStreamForRead();
-                        //cancellationToken.ThrowIfCancellationRequested();
-                        //while (!_semaphore.WaitOne(0))
-                        //{
-                        //    await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
-                        //}
+                        var stream = contentStream.AsStreamForRead();
+                        Logger.Log("downloadfile semaphore");
                         await _semaphore.WaitOneAsync();
-                        System.Diagnostics.Debug.WriteLine("downloadfile semaphore");
                         try
                         {
+                            Logger.Log("downloadfile semaphore taken");
                             var file = await folder.CreateFileAsync(fileName,
                                 Windows.Storage.CreationCollisionOption.ReplaceExisting);
                             using (var fileStream = await file.OpenStreamForWriteAsync())
@@ -129,36 +120,30 @@
                             }
                             //store the last modified value, cannot store it inside the file properties, not allowed by w8
                             localSettings.Values[lastModifiedKey] = response.Content.Headers.LastModified ?? null;
+                            //show badge notification
+                            OnNotifyMessage("newMessage");
                         }
                         finally
                         {
-                            System.Diagnostics.Debug.WriteLine("downloadfile semaphore release");
                             _semaphore.Release();
+                            Logger.Log("downloadfile semaphore released");
                         }
                     }
-
-                    //show badge notification
-                    OnNotifyMessage("newMessage");
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine("Request returned error {0}:{1}", (int)response.StatusCode,
-                        response.StatusCode);
+                    Logger.Log("Request returned error {0}:{1}",
+                        (int)response.StatusCode, response.StatusCode);
                     OnNotifyMessage("error");
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("Request threw exception {0}:{1}", 
-                    ex.HResult,
-                    ex.Message);
+                Logger.Log("Request threw exception {0}:{1}", ex.HResult, ex.Message);
                 OnNotifyMessage("error");
             }
-            finally
-            {
-                System.Diagnostics.Debug.WriteLine("End Task");
-            }
-        }
+        });
+}
 
         public async void ClearCacheAsync()
         {
@@ -166,16 +151,18 @@
             var localSettings = AppData.Current.LocalSettings;
 
             StorageFile file = null;
+            Logger.Log("clearcache semaphore");
             await _semaphore.WaitOneAsync();
-            System.Diagnostics.Debug.WriteLine("clearcache semaphore");
             try
             {
+                Logger.Log("clearcache semaphore taken");
                 try
                 {
                     file = await folder.GetFileAsync(fileName);
                 }
                 catch (FileNotFoundException)
                 {
+                    Logger.Log("file not found, will not delete it :)");
                 }
 
                 if (file != null)
@@ -186,12 +173,12 @@
             }
             catch (FileNotFoundException)
             {
+                Logger.Log("file not found while deleting, will not delete it :)");
             }
             finally
             {
-                System.Diagnostics.Debug.WriteLine("clearcache semaphore release");
-
                 _semaphore.Release();
+                Logger.Log("clearcache semaphore released");
             }
         }
     }

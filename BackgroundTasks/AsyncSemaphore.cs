@@ -19,14 +19,16 @@ namespace BackgroundTasks
 
         public IAsyncOperation<bool> WaitOneAsync()
         {
-            return AsyncInfo.Run<bool>(cancellationToken => 
-                Task.Run(()=>{
-                    if (!_semaphore.WaitOne(100))
+            return AsyncInfo.Run<bool>(cancellationToken =>
+                Task.Run(() =>
+                {
+                    while (!_semaphore.WaitOne(100))
                     {
+                        Logger.Log("Waiting...");
                         cancellationToken.ThrowIfCancellationRequested();
                     }
                     return true;
-                },cancellationToken));
+                }, cancellationToken));
         }
 
         public int Release()

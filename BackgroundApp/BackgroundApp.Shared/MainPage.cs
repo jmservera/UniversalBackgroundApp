@@ -1,19 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace BackgroundApp
+﻿namespace BackgroundApp
 {
+    using Windows.UI.Xaml;
     public partial class MainPage
     {
-        bool registered = false;
-        protected async override void OnGotFocus(Windows.UI.Xaml.RoutedEventArgs e)
+        private void Page_Loaded(object sender, RoutedEventArgs e)
         {
-            base.OnGotFocus(e);
-            if (!registered)
+            var vm = mainGrid.DataContext as BackgroundAppViewModel;
+            if (vm!=null && !vm.IsTaskRegistered)
             {
-                registered = true;
-                await BackgroundTasks.BackgroundDemoTask.RegisterTaskAsync();
+                vm.IsTaskRegistered = true;
             }
         }
     }
